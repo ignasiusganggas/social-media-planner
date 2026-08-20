@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Trash2, Calendar, Layers, Sparkles, Pencil, X, Check } from "lucide-react";
+import { Plus, Trash2, Calendar, Layers, Sparkles, Pencil, X, Check, XCircle } from "lucide-react";
 
 const PILLAR_PALETTE = [
   { bg: "#E4EEEA", fg: "#2F5C4E", dot: "#3E7C74" },
@@ -164,6 +164,21 @@ export default function PlannerPage() {
     setItems((prev) => prev.filter((it) => it.id !== itemId));
     await fetch(`/api/content-plans/${itemId}`, { method: "DELETE" });
   }
+  async function deleteCampaign(campaignId, campaignName) {
+    const confirmed = window.confirm(
+      `Delete "${campaignName}"? This will also permanently delete all of its content plan items. This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" });
+    setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
+    if (activeCampaignId === campaignId) {
+      setActiveCampaignId(null);
+      setItems([]);
+      setShowForm(true);
+    }
+  }
+
   async function addManualItem() {
     if (!activeCampaign) return;
     const res = await fetch("/api/content-plans", {
@@ -205,10 +220,16 @@ export default function PlannerPage() {
       {campaigns.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
           {campaigns.map((c) => (
-            <button key={c.id} onClick={() => { setActiveCampaignId(c.id); setShowForm(false); }}
-              style={{ padding: "6px 12px", borderRadius: 20, border: "1px solid #DEE2D6", background: c.id === activeCampaignId ? "#20281F" : "#fff", color: c.id === activeCampaignId ? "#F5F4EF" : "#40473A", fontSize: 12.5, cursor: "pointer" }}>
-              {c.name}
-            </button>
+            <div key={c.id} style={{ display: "inline-flex", alignItems: "center", borderRadius: 20, border: "1px solid #DEE2D6", background: c.id === activeCampaignId ? "#20281F" : "#fff", overflow: "hidden" }}>
+              <button onClick={() => { setActiveCampaignId(c.id); setShowForm(false); }}
+                style={{ padding: "6px 6px 6px 12px", border: "none", background: "transparent", color: c.id === activeCampaignId ? "#F5F4EF" : "#40473A", fontSize: 12.5, cursor: "pointer" }}>
+                {c.name}
+              </button>
+              <button onClick={() => deleteCampaign(c.id, c.name)} title="Delete campaign"
+                style={{ padding: "6px 10px 6px 4px", border: "none", background: "transparent", color: c.id === activeCampaignId ? "#C9A79E" : "#B15140", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <XCircle size={14} />
+              </button>
+            </div>
           ))}
         </div>
       )}
