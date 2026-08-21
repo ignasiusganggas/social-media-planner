@@ -23,3 +23,6 @@ button:focus-visible { outline: 2px solid #B15140; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+.cp-spin { animation: cp-spin 1s linear infinite; }
+@keyframes cp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
