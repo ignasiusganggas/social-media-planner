@@ -61,17 +61,38 @@ export async function POST() {
       const engagementRate = reach && reach > 0 ? Number(((totalEngagement / reach) * 100).toFixed(2)) : null;
 
       // 3. Best-effort match to a content plan item: same date, not already matched.
+      // Important: if this post was already matched in a previous sync, keep that
+      // match rather than re-deriving it (otherwise a second sync can wipe it out).
       let contentId = null;
-      if (media.timestamp) {
-        const postDate = media.timestamp.slice(0, 10);
-        const { data: matchCandidates } = await supabase
+      const { data: existingPost } = await supabase
+        .from("instagram_posts")
+        .select("content_id")
+        .eq("ig_post_id", media.id)
+        .maybeSingle();
+
+      if (existingPost?.content_id) {
+        contentId = existingPost.content_id;
+      } else {
+        // Self-heal: a content_plans row may already reference this exact post
+        // (from before this bug fix) even though instagram_posts lost the link.
+        const { data: reverseMatch } = await supabase
           .from("content_plans")
           .select("id")
-          .eq("date", postDate)
-          .is("instagram_post_id", null)
-          .limit(1);
-        if (matchCandidates && matchCandidates.length > 0) {
-          contentId = matchCandidates[0].id;
+          .eq("instagram_post_id", media.id)
+          .maybeSingle();
+        if (reverseMatch?.id) {
+          contentId = reverseMatch.id;
+        } else if (media.timestamp) {
+          const postDate = media.timestamp.slice(0, 10);
+          const { data: matchCandidates } = await supabase
+            .from("content_plans")
+            .select("id")
+            .eq("date", postDate)
+            .is("instagram_post_id", null)
+            .limit(1);
+          if (matchCandidates && matchCandidates.length > 0) {
+            contentId = matchCandidates[0].id;
+          }
         }
       }
 
