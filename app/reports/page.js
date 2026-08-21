@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { FileText, Sparkles, ChevronDown, TrendingUp, TrendingDown, Layers, Grid3x3 } from "lucide-react";
+import { FileText, Sparkles, TrendingUp, TrendingDown, Layers, Grid3x3, Clock } from "lucide-react";
 
 const inputStyle = { padding: "9px 11px", borderRadius: 7, border: "1px solid #DEE2D6", background: "#fff", fontSize: 13.5, color: "#20281F" };
 
@@ -9,6 +9,10 @@ function daysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return isoDate(d);
+}
+function fmtPeriodLabel(h) {
+  const type = h.period_type === "weekly" ? "Weekly" : h.period_type === "monthly" ? "Monthly" : "Custom";
+  return `${type} · ${h.period_start} → ${h.period_end}`;
 }
 
 export default function ReportsPage() {
@@ -21,6 +25,8 @@ export default function ReportsPage() {
   const [error, setError] = useState("");
   const [report, setReport] = useState(null);
   const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     fetch("/api/campaigns").then((r) => r.json()).then((data) => {
@@ -30,10 +36,21 @@ export default function ReportsPage() {
     });
   }, []);
 
+  // Load this campaign's report log, and automatically reopen the most recent
+  // report so navigating back to this page never looks "empty" by default.
   useEffect(() => {
     if (!campaignId) return;
-    fetch(`/api/reports?campaign_id=${campaignId}`).then((r) => r.json()).then((data) => setHistory(Array.isArray(data) ? data : []));
-  }, [campaignId, report]);
+    setLoadingHistory(true);
+    fetch(`/api/reports?campaign_id=${campaignId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setHistory(list);
+        setReport(list.length > 0 ? list[0] : null);
+        setShowForm(list.length === 0);
+        setLoadingHistory(false);
+      });
+  }, [campaignId]);
 
   async function handleGenerate() {
     setError("");
@@ -57,6 +74,8 @@ export default function ReportsPage() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setReport(data);
+      setHistory((prev) => [data, ...prev]);
+      setShowForm(false);
     } catch (e) {
       setError("Something went wrong: " + e.message);
     } finally {
@@ -68,132 +87,167 @@ export default function ReportsPage() {
 
   return (
     <>
-      <header style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", color: "#9AA18C", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          Phase 4
-        </div>
-        <h1 className="cp-display" style={{ fontSize: 30, fontWeight: 600, margin: 0, color: "#20281F", letterSpacing: "-0.01em" }}>
-          AI Reporting
-        </h1>
-      </header>
-
-      <div style={{ background: "#FAF9F5", border: "1px solid #DEE2D6", borderRadius: 14, padding: 20, marginBottom: 24, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <header style={{ marginBottom: 22, display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <label style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "#5C6650", marginBottom: 5 }}>Campaign</label>
+          <div style={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", color: "#9AA18C", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Phase 4
+          </div>
+          <h1 className="cp-display" style={{ fontSize: 30, fontWeight: 600, margin: 0, color: "#20281F", letterSpacing: "-0.01em" }}>
+            AI Reporting
+          </h1>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <select style={inputStyle} value={campaignId} onChange={(e) => setCampaignId(e.target.value)}>
             {campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          <button onClick={() => setShowForm((s) => !s)}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 8, border: "1px solid #20281F", background: showForm ? "#20281F" : "transparent", color: showForm ? "#F5F4EF" : "#20281F", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+            <Sparkles size={14} /> New report
+          </button>
         </div>
-        <div>
-          <label style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "#5C6650", marginBottom: 5 }}>Period</label>
-          <select style={inputStyle} value={periodType} onChange={(e) => setPeriodType(e.target.value)}>
-            <option value="weekly">Last 7 days</option>
-            <option value="monthly">Last 30 days</option>
-            <option value="custom">Custom range</option>
-          </select>
+      </header>
+
+      {showForm && (
+        <div style={{ background: "#FAF9F5", border: "1px solid #DEE2D6", borderRadius: 14, padding: 20, marginBottom: 24, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div>
+            <label style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "#5C6650", marginBottom: 5 }}>Period</label>
+            <select style={inputStyle} value={periodType} onChange={(e) => setPeriodType(e.target.value)}>
+              <option value="weekly">Last 7 days</option>
+              <option value="monthly">Last 30 days</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </div>
+          {periodType === "custom" && (
+            <>
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "#5C6650", marginBottom: 5 }}>Start</label>
+                <input type="date" style={inputStyle} value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "#5C6650", marginBottom: 5 }}>End</label>
+                <input type="date" style={inputStyle} value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
+              </div>
+            </>
+          )}
+          <button onClick={handleGenerate} disabled={generating}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 8, border: "none", background: generating ? "#C9A79E" : "#B15140", color: "#fff", fontSize: 13.5, fontWeight: 500, cursor: generating ? "default" : "pointer" }}>
+            <Sparkles size={15} /> {generating ? "Generating report…" : "Generate report"}
+          </button>
         </div>
-        {periodType === "custom" && (
-          <>
-            <div>
-              <label style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "#5C6650", marginBottom: 5 }}>Start</label>
-              <input type="date" style={inputStyle} value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "#5C6650", marginBottom: 5 }}>End</label>
-              <input type="date" style={inputStyle} value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
-            </div>
-          </>
-        )}
-        <button onClick={handleGenerate} disabled={generating}
-          style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 8, border: "none", background: generating ? "#C9A79E" : "#B15140", color: "#fff", fontSize: 13.5, fontWeight: 500, cursor: generating ? "default" : "pointer" }}>
-          <Sparkles size={15} /> {generating ? "Generating report…" : "Generate report"}
-        </button>
-      </div>
+      )}
 
       {error && <div style={{ marginBottom: 16, fontSize: 12.5, color: "#8A3B2A", background: "#F5E0DC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
 
-      {c && c.insufficient_data && (
-        <div style={{ border: "1px dashed #C7CDBF", borderRadius: 14, padding: "40px 30px", textAlign: "center", background: "#FAF9F5" }}>
-          <FileText size={24} color="#9AA18C" style={{ marginBottom: 10 }} />
-          <p style={{ fontSize: 13.5, color: "#5C6650", margin: 0 }}>{c.message}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "flex-start" }}>
+        <div style={{ background: "#FAF9F5", border: "1px solid #DEE2D6", borderRadius: 14, padding: 14, position: "sticky", top: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 500, color: "#9AA18C", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10 }}>
+            <Clock size={12} /> Report log
+          </div>
+          {loadingHistory ? (
+            <div style={{ fontSize: 12, color: "#9AA18C" }}>Loading…</div>
+          ) : history.length === 0 ? (
+            <div style={{ fontSize: 12, color: "#9AA18C" }}>No reports yet for this campaign.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {history.map((h) => {
+                const active = report?.id === h.id;
+                return (
+                  <button key={h.id} onClick={() => { setReport(h); setShowForm(false); }}
+                    style={{ textAlign: "left", padding: "8px 10px", borderRadius: 7, border: "1px solid #DEE2D6", background: active ? "#20281F" : "#fff", color: active ? "#F5F4EF" : "#3C4433", cursor: "pointer", fontSize: 11.5, lineHeight: 1.4 }}>
+                    {fmtPeriodLabel(h)}
+                    {h.content?.insufficient_data && (
+                      <div style={{ fontSize: 10, color: active ? "#C9CFBE" : "#9AA18C", marginTop: 2 }}>Insufficient data</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
 
-      {c && !c.insufficient_data && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <Section title="Executive summary" icon={FileText}>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#3C4433", margin: 0 }}>{c.executive_summary}</p>
-          </Section>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {[
-              { label: "Total reach", value: c.overall.total_reach },
-              { label: "Total likes", value: c.overall.total_likes },
-              { label: "Total comments", value: c.overall.total_comments },
-              { label: "Total saves", value: c.overall.total_saves },
-              { label: "Avg engagement rate", value: c.overall.avg_engagement_rate + "%" },
-              { label: "Posts published", value: `${c.overall.posts_published}/${c.overall.posts_planned}` },
-            ].map((s) => (
-              <div key={s.label} style={{ background: "#FAF9F5", border: "1px solid #DEE2D6", borderRadius: 10, padding: "10px 16px", minWidth: 110 }}>
-                <div className="cp-mono" style={{ fontSize: 17, fontWeight: 500, color: "#20281F" }}>{s.value}</div>
-                <div style={{ fontSize: 10.5, color: "#9AA18C", textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 2 }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-
-          <Section title="Overall performance">
-            <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "#3C4433", margin: 0 }}>{c.overall_performance_narrative}</p>
-          </Section>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <Section title="Top performing content" icon={TrendingUp}>
-              <PostList posts={c.top_posts} />
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.top_performing_narrative}</p>
-            </Section>
-            <Section title="Lower performing content" icon={TrendingDown}>
-              <PostList posts={c.low_posts} />
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.low_performing_narrative}</p>
-            </Section>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <Section title="Content pillar analysis" icon={Layers}>
-              <StatTable rows={c.pillar_stats} labelKey="pillar" />
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.pillar_analysis_narrative}</p>
-            </Section>
-            <Section title="Format analysis" icon={Grid3x3}>
-              <StatTable rows={c.format_stats} labelKey="format" />
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.format_analysis_narrative}</p>
-            </Section>
-          </div>
-
-          <Section title="Audience & engagement insights">
-            <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "#3C4433", margin: 0 }}>{c.audience_engagement_insights}</p>
-          </Section>
-
-          <Section title="Recommendations">
-            <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-              {(c.recommendations || []).map((r, i) => (
-                <li key={i} style={{ fontSize: 13.5, lineHeight: 1.6, color: "#3C4433" }}>{r}</li>
-              ))}
-            </ul>
-          </Section>
-        </div>
-      )}
-
-      {!report && history.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 12.5, color: "#9AA18C", marginBottom: 10 }}>Past reports for this campaign</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {history.map((h) => (
-              <button key={h.id} onClick={() => setReport(h)}
-                style={{ textAlign: "left", padding: "10px 14px", borderRadius: 8, border: "1px solid #DEE2D6", background: "#fff", cursor: "pointer", fontSize: 12.5, color: "#3C4433" }}>
-                {h.period_start} → {h.period_end} · {h.period_type}
+        <div>
+          {!report && !showForm && !loadingHistory && (
+            <div style={{ border: "1px dashed #C7CDBF", borderRadius: 14, padding: "50px 30px", textAlign: "center", background: "#FAF9F5" }}>
+              <FileText size={24} color="#9AA18C" style={{ marginBottom: 10 }} />
+              <p style={{ fontSize: 13.5, color: "#5C6650", margin: "0 0 14px 0" }}>No reports yet for this campaign.</p>
+              <button onClick={() => setShowForm(true)} style={{ padding: "9px 16px", borderRadius: 8, border: "none", background: "#20281F", color: "#F5F4EF", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                Generate your first report
               </button>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {c && c.insufficient_data && (
+            <div style={{ border: "1px dashed #C7CDBF", borderRadius: 14, padding: "40px 30px", textAlign: "center", background: "#FAF9F5" }}>
+              <FileText size={24} color="#9AA18C" style={{ marginBottom: 10 }} />
+              <p style={{ fontSize: 13.5, color: "#5C6650", margin: 0 }}>{c.message}</p>
+            </div>
+          )}
+
+          {c && !c.insufficient_data && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{ fontSize: 11.5, color: "#9AA18C" }}>{fmtPeriodLabel(report)}</div>
+
+              <Section title="Executive summary" icon={FileText}>
+                <p style={{ fontSize: 14, lineHeight: 1.6, color: "#3C4433", margin: 0 }}>{c.executive_summary}</p>
+              </Section>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {[
+                  { label: "Total reach", value: c.overall.total_reach },
+                  { label: "Total likes", value: c.overall.total_likes },
+                  { label: "Total comments", value: c.overall.total_comments },
+                  { label: "Total saves", value: c.overall.total_saves },
+                  { label: "Avg engagement rate", value: c.overall.avg_engagement_rate + "%" },
+                  { label: "Posts published", value: `${c.overall.posts_published}/${c.overall.posts_planned}` },
+                ].map((s) => (
+                  <div key={s.label} style={{ background: "#FAF9F5", border: "1px solid #DEE2D6", borderRadius: 10, padding: "10px 16px", minWidth: 110 }}>
+                    <div className="cp-mono" style={{ fontSize: 17, fontWeight: 500, color: "#20281F" }}>{s.value}</div>
+                    <div style={{ fontSize: 10.5, color: "#9AA18C", textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 2 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <Section title="Overall performance">
+                <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "#3C4433", margin: 0 }}>{c.overall_performance_narrative}</p>
+              </Section>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <Section title="Top performing content" icon={TrendingUp}>
+                  <PostList posts={c.top_posts} />
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.top_performing_narrative}</p>
+                </Section>
+                <Section title="Lower performing content" icon={TrendingDown}>
+                  <PostList posts={c.low_posts} />
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.low_performing_narrative}</p>
+                </Section>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <Section title="Content pillar analysis" icon={Layers}>
+                  <StatTable rows={c.pillar_stats} labelKey="pillar" />
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.pillar_analysis_narrative}</p>
+                </Section>
+                <Section title="Format analysis" icon={Grid3x3}>
+                  <StatTable rows={c.format_stats} labelKey="format" />
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "#5C6650", marginTop: 10 }}>{c.format_analysis_narrative}</p>
+                </Section>
+              </div>
+
+              <Section title="Audience & engagement insights">
+                <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "#3C4433", margin: 0 }}>{c.audience_engagement_insights}</p>
+              </Section>
+
+              <Section title="Recommendations">
+                <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(c.recommendations || []).map((r, i) => (
+                    <li key={i} style={{ fontSize: 13.5, lineHeight: 1.6, color: "#3C4433" }}>{r}</li>
+                  ))}
+                </ul>
+              </Section>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </>
   );
 }
