@@ -40,7 +40,7 @@ export default function RecommendationsPage() {
 
   useEffect(() => {
     if (!campaignId) return;
-    fetch(`/api/reports?campaign_id=${campaignId}`, { cache: "no-store" })
+    fetch(`/api/reports?campaign_id=${campaignId}&t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         const usable = (Array.isArray(data) ? data : []).filter((r) => !r.content?.insufficient_data);
@@ -52,7 +52,7 @@ export default function RecommendationsPage() {
         }
       });
 
-    fetch(`/api/recommendations?campaign_id=${campaignId}`, { cache: "no-store" })
+    fetch(`/api/recommendations?campaign_id=${campaignId}&t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
@@ -79,7 +79,7 @@ export default function RecommendationsPage() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setRec(data);
-      const refreshed = await fetch(`/api/recommendations?campaign_id=${campaignId}`, { cache: "no-store" });
+      const refreshed = await fetch(`/api/recommendations?campaign_id=${campaignId}&t=${Date.now()}`, { cache: "no-store" });
       setHistory(await refreshed.json());
     } catch (e) {
       setError("Something went wrong: " + e.message);

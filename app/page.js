@@ -10,14 +10,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      const cRes = await fetch("/api/campaigns");
+      const cRes = await fetch(`/api/campaigns?t=${Date.now()}`, { cache: "no-store" });
       const cData = await cRes.json();
       const campaignsList = Array.isArray(cData) ? cData : [];
       setCampaigns(campaignsList);
 
       const allItems = [];
       for (const c of campaignsList) {
-        const iRes = await fetch(`/api/content-plans?campaign_id=${c.id}`);
+        const iRes = await fetch(`/api/content-plans?campaign_id=${c.id}&t=${Date.now()}`, { cache: "no-store" });
         const iData = await iRes.json();
         if (Array.isArray(iData)) allItems.push(...iData.map((it) => ({ ...it, campaignName: c.name })));
       }

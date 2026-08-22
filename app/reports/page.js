@@ -29,7 +29,7 @@ export default function ReportsPage() {
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    fetch("/api/campaigns").then((r) => r.json()).then((data) => {
+    fetch(`/api/campaigns?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()).then((data) => {
       const list = Array.isArray(data) ? data : [];
       setCampaigns(list);
       if (list.length > 0) setCampaignId(list[0].id);
@@ -41,7 +41,7 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!campaignId) return;
     setLoadingHistory(true);
-    fetch(`/api/reports?campaign_id=${campaignId}`, { cache: "no-store" })
+    fetch(`/api/reports?campaign_id=${campaignId}&t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];

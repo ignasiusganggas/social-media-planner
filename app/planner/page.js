@@ -70,7 +70,7 @@ export default function PlannerPage() {
 
   const loadCampaigns = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/campaigns");
+    const res = await fetch(`/api/campaigns?t=${Date.now()}`, { cache: "no-store" });
     const data = await res.json();
     setCampaigns(Array.isArray(data) ? data : []);
     setLoading(false);
@@ -80,7 +80,7 @@ export default function PlannerPage() {
 
   useEffect(() => {
     if (!activeCampaignId) { setItems([]); return; }
-    fetch(`/api/content-plans?campaign_id=${activeCampaignId}`)
+    fetch(`/api/content-plans?campaign_id=${activeCampaignId}&t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => setItems(Array.isArray(data) ? data : []));
   }, [activeCampaignId]);
