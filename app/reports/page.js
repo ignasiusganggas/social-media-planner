@@ -41,7 +41,7 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!campaignId) return;
     setLoadingHistory(true);
-    fetch(`/api/reports?campaign_id=${campaignId}`)
+    fetch(`/api/reports?campaign_id=${campaignId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
