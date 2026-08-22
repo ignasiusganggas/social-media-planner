@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { href: "/planner", label: "Content Planner", icon: Calendar, live: true },
   { href: "/monitoring", label: "Instagram Monitoring", icon: Instagram, live: false, phase: "Phase 3" },
   { href: "/reports", label: "Reports", icon: BarChart3, live: false, phase: "Phase 4" },
-  { href: "/recommendations", label: "Recommendations", icon: Lightbulb, live: false, phase: "Phase 5" },
+  { href: "/recommendations", label: "Recommendations", icon: Lightbulb, live: true },
 ];
 
 export default function Sidebar() {
