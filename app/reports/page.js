@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { FileText, Sparkles, TrendingUp, TrendingDown, Layers, Grid3x3, Clock } from "lucide-react";
+import { FileText, Sparkles, TrendingUp, TrendingDown, Layers, Grid3x3, Clock, Trash2 } from "lucide-react";
 
 const inputStyle = { padding: "9px 11px", borderRadius: 7, border: "1px solid #DEE2D6", background: "#fff", fontSize: 13.5, color: "#20281F" };
 
@@ -83,6 +83,21 @@ export default function ReportsPage() {
     }
   }
 
+  async function handleDeleteReport(reportId) {
+    const confirmed = window.confirm("Delete this report? This cannot be undone.");
+    if (!confirmed) return;
+
+    await fetch(`/api/reports/${reportId}`, { method: "DELETE" });
+    setHistory((prev) => {
+      const remaining = prev.filter((h) => h.id !== reportId);
+      if (report?.id === reportId) {
+        setReport(remaining.length > 0 ? remaining[0] : null);
+        setShowForm(remaining.length === 0);
+      }
+      return remaining;
+    });
+  }
+
   const c = report?.content || null;
 
   return (
@@ -152,13 +167,19 @@ export default function ReportsPage() {
               {history.map((h) => {
                 const active = report?.id === h.id;
                 return (
-                  <button key={h.id} onClick={() => { setReport(h); setShowForm(false); }}
-                    style={{ textAlign: "left", padding: "8px 10px", borderRadius: 7, border: "1px solid #DEE2D6", background: active ? "#20281F" : "#fff", color: active ? "#F5F4EF" : "#3C4433", cursor: "pointer", fontSize: 11.5, lineHeight: 1.4 }}>
-                    {fmtPeriodLabel(h)}
-                    {h.content?.insufficient_data && (
-                      <div style={{ fontSize: 10, color: active ? "#C9CFBE" : "#9AA18C", marginTop: 2 }}>Insufficient data</div>
-                    )}
-                  </button>
+                  <div key={h.id} style={{ display: "flex", alignItems: "stretch", gap: 4 }}>
+                    <button onClick={() => { setReport(h); setShowForm(false); }}
+                      style={{ flex: 1, textAlign: "left", padding: "8px 10px", borderRadius: 7, border: "1px solid #DEE2D6", background: active ? "#20281F" : "#fff", color: active ? "#F5F4EF" : "#3C4433", cursor: "pointer", fontSize: 11.5, lineHeight: 1.4 }}>
+                      {fmtPeriodLabel(h)}
+                      {h.content?.insufficient_data && (
+                        <div style={{ fontSize: 10, color: active ? "#C9CFBE" : "#9AA18C", marginTop: 2 }}>Insufficient data</div>
+                      )}
+                    </button>
+                    <button onClick={() => handleDeleteReport(h.id)} title="Delete report"
+                      style={{ border: "1px solid #DEE2D6", background: "#fff", borderRadius: 7, padding: "0 8px", cursor: "pointer", color: "#B15140", display: "flex", alignItems: "center" }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 );
               })}
             </div>
