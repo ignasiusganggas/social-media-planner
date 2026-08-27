@@ -52,7 +52,12 @@ export default function RecommendationsPage() {
         }
       });
 
-    fetch(`/api/recommendations?campaign_id=${campaignId}&t=${Date.now()}`, { cache: "no-store" })
+    fetch(`/api/recommendations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ campaign_id: campaignId, _nonce: Math.random() }),
+    })
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
@@ -79,7 +84,12 @@ export default function RecommendationsPage() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setRec(data);
-      const refreshed = await fetch(`/api/recommendations?campaign_id=${campaignId}&t=${Date.now()}`, { cache: "no-store" });
+      const refreshed = await fetch(`/api/recommendations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ campaign_id: campaignId, _nonce: Math.random() }),
+      });
       setHistory(await refreshed.json());
     } catch (e) {
       setError("Something went wrong: " + e.message);
