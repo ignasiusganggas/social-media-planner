@@ -27,7 +27,6 @@ export default function ReportsPage() {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
     fetch(`/api/campaigns?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json()).then((data) => {
@@ -42,24 +41,21 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!campaignId) return;
     setLoadingHistory(true);
-    const url = `/api/reports?campaign_id=${campaignId}&t=${Date.now()}`;
-    fetch(url, { cache: "no-store" })
-      .then((r) => {
-        setDebugInfo((prev) => `URL: ${url}\nHTTP status: ${r.status}`);
-        return r.json();
-      })
+    fetch(`/api/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ campaign_id: campaignId, _nonce: Math.random() }),
+    })
+      .then((r) => r.json())
       .then((data) => {
-        setDebugInfo((prev) => `${prev}\nParsed as array: ${Array.isArray(data)}\nItem count: ${Array.isArray(data) ? data.length : "N/A"}\nRaw (first 500 chars): ${JSON.stringify(data).slice(0, 500)}`);
         const list = Array.isArray(data) ? data : [];
         setHistory(list);
         setReport(list.length > 0 ? list[0] : null);
         setShowForm(list.length === 0);
         setLoadingHistory(false);
       })
-      .catch((err) => {
-        setDebugInfo((prev) => `${prev}\nFETCH ERROR: ${err.message}`);
-        setLoadingHistory(false);
-      });
+      .catch(() => setLoadingHistory(false));
   }, [campaignId]);
 
   async function handleGenerate() {
@@ -112,11 +108,6 @@ export default function ReportsPage() {
 
   return (
     <>
-      {debugInfo && (
-        <pre style={{ background: "#1a1a1a", color: "#7CFC00", padding: 12, borderRadius: 8, fontSize: 11, whiteSpace: "pre-wrap", marginBottom: 16, fontFamily: "monospace" }}>
-          {debugInfo}
-        </pre>
-      )}
       <header style={{ marginBottom: 22, display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", color: "#9AA18C", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
