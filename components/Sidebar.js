@@ -6,8 +6,8 @@ import { LayoutGrid, Calendar, Instagram, BarChart3, Lightbulb } from "lucide-re
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutGrid, live: true },
   { href: "/planner", label: "Content Planner", icon: Calendar, live: true },
-  { href: "/monitoring", label: "Instagram Monitoring", icon: Instagram, live: false, phase: "Phase 3" },
-  { href: "/reports", label: "Reports", icon: BarChart3, live: false, phase: "Phase 4" },
+  { href: "/monitoring", label: "Instagram Monitoring", icon: Instagram, live: true },
+  { href: "/reports", label: "Reports", icon: BarChart3, live: true },
   { href: "/recommendations", label: "Recommendations", icon: Lightbulb, live: true },
 ];
 
